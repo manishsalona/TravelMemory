@@ -1,10 +1,36 @@
-FROM node:lts-alpine
-ENV NODE_ENV=production
-WORKDIR /usr/src/app
-COPY ["package.json", "package-lock.json*", "npm-shrinkwrap.json*", "./"]
-RUN npm install --production --silent && mv node_modules ../
+# Stage 1: Build the React application
+FROM node:18-alpine AS build
+
+# Set working directory
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install --production
+
+# Copy the entire app to the container
 COPY . .
-EXPOSE 3000
-RUN chown -R node /usr/src/app
-USER node
+
+# Build the React app for production
+RUN npm run build
+
+# Stage 2: Serve the React app with Node.js
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy the build from the previous stage
+COPY --from=build /app/build /app/build
+
+# Install production dependencies
+COPY package*.json ./
+RUN npm install --production
+
+# Expose port 3001
+EXPOSE 3001
+
+# Start the application
 CMD ["npm", "start"]
